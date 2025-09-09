@@ -16,7 +16,7 @@ dist-ssr/
 
 # Local env files
 *.local
-.env
+*.env
 
 # Editor directories and files
 .vscode/*
@@ -28,7 +28,9 @@ dist-ssr/
 *.njsproj
 *.sln
 *.sw?
+backend/obj
 
 # Backup / misc
 *.bak
 *.tmp
+
