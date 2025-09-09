@@ -47,4 +47,8 @@ The project is divided into three main parts:
 * Helps maintain proper ventilation.
 * Educational project for learning Arduino, C#, React, and IoT basics.
 
-**Drivers:** [link](https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads)
+## Settings
+
+- **Drivers:** [link](https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads)
+- **Board:** ESP32-WROOM-DA Module
+- **Board downloading:** esp32
