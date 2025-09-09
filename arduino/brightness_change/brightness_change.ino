@@ -1,39 +1,35 @@
-int pin = 19;
-int brightness = 0;
-int step = 1;
+#include "WiFi.h"
 
 void setup() {
-  pinMode(pin, OUTPUT);
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+
+  Serial.println("Setup done");
 }
 
 void loop() {
-  digital_Write(pin, brightness);
-  brightness_changer();
-}
+  Serial.println("Scan Start");
 
-void digital_Write(int pin, int level) {
-  const int period = 255;
-  if (level < 0){
-    level = 0;
-  }
-  if (level > 255) {
-    level = 255;
-  }
-  
-  for (int i = 0; i < period; i++) {
-    if (i < level) {
-      digitalWrite(pin, HIGH);
-    } else {
-      digitalWrite(pin, LOW);
+  int n = WiFi.scanNetworks();
+  Serial.println("Scan Done");
+  if (n == 0){
+    Serial.println(" Networks Not Found ");
+  } else {
+    Serial.println(n);
+    Serial.println(" Networks Not Found ");
+    for(int i = 0; i < n; ++i){
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(") ");
+      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
+      delay(10);
     }
-    delayMicroseconds(50);
   }
-}
-
-void brightness_changer() {
-  brightness += step;
-  if (brightness >= 255 || brightness <= 0) {
-    step = -step;
-  }
-  delay(100);
+  Serial.println("");
+  delay(5000);
 }
