@@ -26,7 +26,7 @@ void digital_Write(int pin, int level) {
     } else {
       digitalWrite(pin, LOW);
     }
-    delayMicroseconds(50);aa
+    delayMicroseconds(50);
   }
 }
 
@@ -35,5 +35,5 @@ void brightness_changer() {
   if (brightness >= 255 || brightness <= 0) {
     step = -step;
   }
-  delay(20);
+  delay(100);
 }
