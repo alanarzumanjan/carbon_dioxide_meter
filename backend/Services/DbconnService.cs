@@ -22,7 +22,7 @@ public class DbConnectionService
         var port = Environment.GetEnvironmentVariable("DPORT") ?? "5432";
         var database = Environment.GetEnvironmentVariable("DATABASE") ?? "postgres";
         var user = Environment.GetEnvironmentVariable("USER") ?? "postgres";
-        var password = Environment.GetEnvironmentVariable("PASSWORD") ?? "";
+        var password = Environment.GetEnvironmentVariable("PASSWORD") ?? "postgres";
 
         var direct = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING");
         if (!string.IsNullOrWhiteSpace(direct))

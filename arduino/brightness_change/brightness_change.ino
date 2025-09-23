@@ -1,35 +1,59 @@
-#include "WiFi.h"
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+const char* ssid     = "Dark Network";
+const char* password = "111alah666!";
+
+String serverUrl = "http://10.221.84.251:5000/message";
+
+String inputMessage = "";
 
 void setup() {
   Serial.begin(115200);
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
+  WiFi.begin(ssid, password);
 
-  Serial.println("Setup done");
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n✅ Connected to WiFi!");
+  Serial.print("ESP32 IP: ");
+  Serial.println(WiFi.localIP());
+
+  Serial.println("\n💬 Enter message:");
 }
 
 void loop() {
-  Serial.println("Scan Start");
+  if (Serial.available()) {
+    inputMessage = Serial.readStringUntil('\n'); 
+    inputMessage.trim();
 
-  int n = WiFi.scanNetworks();
-  Serial.println("Scan Done");
-  if (n == 0){
-    Serial.println(" Networks Not Found ");
-  } else {
-    Serial.println(n);
-    Serial.println(" Networks Not Found ");
-    for(int i = 0; i < n; ++i){
-      Serial.print(i + 1);
-      Serial.print(": ");
-      Serial.print(WiFi.SSID(i));
-      Serial.print(" (");
-      Serial.print(WiFi.RSSI(i));
-      Serial.print(") ");
-      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN)?" ":"*");
-      delay(10);
+    if (inputMessage.length() > 0) {
+      sendMessage(inputMessage);
     }
   }
-  Serial.println("");
-  delay(5000);
+}
+
+void sendMessage(String msg) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverUrl);
+    http.addHeader("Content-Type", "application/json");
+
+    String json = "{\"msg\":\"" + msg + "\"}";
+
+    int httpResponseCode = http.POST(json);
+
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.println("📩 Server: " + response);
+    } else {
+      Serial.println("❌ Error: " + String(httpResponseCode));
+    }
+
+    http.end();
+  } else {
+    Serial.println("⚠️ WiFi is no");
+  }
 }
