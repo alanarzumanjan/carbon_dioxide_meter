@@ -4,7 +4,7 @@
 const char* ssid     = "Dark Network";
 const char* password = "111alah666!";
 
-String serverUrl = "http://10.221.84.251:5000/message";
+String serverUrl = "http://localhost:5000/message";
 
 String inputMessage = "";
 
