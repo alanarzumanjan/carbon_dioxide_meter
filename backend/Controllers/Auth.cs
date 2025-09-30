@@ -62,4 +62,25 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginDTO request)
+    {
+        var validator = new UserLoginValidator();
+        var errors = validator.Validate(request);
+        if (errors.Count > 0)
+            return BadRequest(new { errors });
+
+        var email = request.Email.Trim().ToLowerInvariant();
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email!.ToLower() == email);
+        if (user is null)
+            return Unauthorized(new { error = "incorrect email." });
+
+        var password = BCrypt.Net.BCrypt.Verify(request.Password, user.Password_hash);
+        if (!password)
+            return Unauthorized(new { error = "Incorrect password." });
+
+        var message = $"> User {user.Id}, {user.Username}, {user.Email} is logined";
+        Console.WriteLine(message);
+        return Ok(new { message, data = user });
+    }
 }
