@@ -33,7 +33,7 @@ public class DbConnectionService
         }
 
         _cached = $"Host={host};Port={port};Database={database};Username={user};Password={password};";
-        Console.WriteLine($"✅ Using PostgreSQL connection: {host}:{port}/{database} as {user}");
+        Console.WriteLine($"✅ Using PostgreSQL connection: {host}:{port}");
         return _cached!;
     }
 }
