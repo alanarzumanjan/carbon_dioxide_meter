@@ -35,8 +35,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
-
 // Connect Swagger UI in Development
 if (app.Environment.IsDevelopment())
 {
@@ -44,7 +42,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 } // for swagger acces: $env:ASPNETCORE_ENVIRONMENT = "Development"
-
 
 // CORS
 if (app.Environment.IsDevelopment())
