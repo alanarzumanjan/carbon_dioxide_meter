@@ -12,7 +12,7 @@ var connectionString = DbConnectionService.TestDatabaseConnection();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Swagger
+// Connect Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Portfolio API", Version = "v1" });
@@ -35,12 +35,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
+
+// Connect Swagger UI in Development
 if (app.Environment.IsDevelopment())
 {
     app.UseMiddleware<SwaggerAuth>();
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+} // for swagger acces: $env:ASPNETCORE_ENVIRONMENT = "Development"
+
 
 // CORS
 if (app.Environment.IsDevelopment())
