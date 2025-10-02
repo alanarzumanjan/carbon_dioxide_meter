@@ -68,3 +68,29 @@ npm start
 cd backend
 dotnet run
 ```
+
+Create a `.env` file in backend/ directory and paste your dates.
+
+ENV Example
+```env
+# Database
+HOST=your_host
+DPORT=db_port
+DATABASE=db_name
+USER=db_user
+PASSWORD=db_password
+
+# Contacts
+EMAIL_ADDRESS=your_email_address
+EMAIL_PASSWORD=your_email_password
+
+# Swagger basic auth
+SWAGGER_ADMIN_LOGIN=login_name
+SWAGGER_ADMIN_PASSWORD=super_strong_password
+
+# CORS (фронт)
+ALLOWED_FRONTEND_PORT=your_frontend_port
+
+# PORT
+PORT=your_running_port
+```
