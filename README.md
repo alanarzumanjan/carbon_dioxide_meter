@@ -69,7 +69,7 @@ cd backend
 dotnet run
 ```
 
-Create a `.env` file in backend/ directory and paste your dates.
+Create a `.env` file in `backend/` directory and paste your dates.
 
 ENV Example
 ```env
