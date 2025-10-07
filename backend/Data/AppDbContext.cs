@@ -30,6 +30,18 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(m => m.Device_Id)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<User>()
+            .HasMany(u => u.Devices)
+            .WithOne(d => d.User)
+            .HasForeignKey(d => d.User_Id)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<User>()
+            .HasMany(u => u.Measurements)
+            .WithOne(m => m.User)
+            .HasForeignKey(m => m.User_Id)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
 }
