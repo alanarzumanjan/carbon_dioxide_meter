@@ -24,17 +24,19 @@ public class MeasurementsController : ControllerBase
         return string.Equals(key.ToString(), _intakeKey, StringComparison.Ordinal);
     }
 
+    // POST /measurements
     [HttpPost]
     public async Task<IActionResult> Ingest([FromBody] MeasurementInDTO dto)
     {
         if (!IntakeAuthorized(Request))
             return Unauthorized(new { error = "Invalid intake key." });
 
-        if (dto is null) return BadRequest(new { error = "Body is required." });
+        if (dto is null)
+            return BadRequest(new { error = "Body is required." });
         if (string.IsNullOrWhiteSpace(dto.DeviceId))
             return BadRequest(new { error = "DeviceId is required." });
-        if (dto.Co2 <= 0 || dto.Co2 > 100000)
-            return BadRequest(new { error = "Co2 value is invalid." });
+        if (dto.CO2 <= 0 || dto.CO2 > 100000)
+            return BadRequest(new { error = "CO2 value is invalid." });
 
         var device = await _db.Devices.FirstOrDefaultAsync(d => d.Id == dto.DeviceId);
         if (device == null)
@@ -43,7 +45,8 @@ public class MeasurementsController : ControllerBase
             {
                 Id = dto.DeviceId,
                 Name = "Auto-registered device",
-                CreatedAt = DateTime.UtcNow
+                Registered_at = DateTime.UtcNow,
+                User_Id = dto.UserId
             };
             _db.Devices.Add(device);
         }
@@ -54,10 +57,11 @@ public class MeasurementsController : ControllerBase
         {
             Id = Guid.NewGuid(),
             Device_Id = dto.DeviceId,
-            Co2 = dto.Co2,
+            User_Id = dto.UserId,
+            CO2 = dto.CO2,
             Temperature = dto.Temperature,
             Humidity = dto.Humidity,
-            CreatedAt = ts
+            Timestamp = ts
         };
 
         _db.Measurements.Add(entity);
@@ -70,6 +74,7 @@ public class MeasurementsController : ControllerBase
         });
     }
 
+    // GET /measurements/{deviceId}
     [HttpGet("{deviceId}")]
     public async Task<IActionResult> GetByDevice(string deviceId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
     {
@@ -81,7 +86,7 @@ public class MeasurementsController : ControllerBase
 
         var query = _db.Measurements
             .Where(m => m.Device_Id == deviceId)
-            .OrderByDescending(m => m.CreatedAt);
+            .OrderByDescending(m => m.Timestamp);
 
         var total = await query.CountAsync();
         var items = await query.Skip(offset).Take(limit).ToListAsync();
@@ -95,13 +100,14 @@ public class MeasurementsController : ControllerBase
         });
     }
 
+    // GET /measurements/recent
     [HttpGet("recent")]
     public async Task<IActionResult> GetRecent([FromQuery] int limit = 100)
     {
         limit = Math.Clamp(limit, 1, 1000);
 
         var items = await _db.Measurements
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.Timestamp)
             .Take(limit)
             .ToListAsync();
 
@@ -112,6 +118,7 @@ public class MeasurementsController : ControllerBase
         });
     }
 
+    // GET /measurements/{deviceId}/latest
     [HttpGet("{deviceId}/latest")]
     public async Task<IActionResult> GetLatest(string deviceId)
     {
@@ -120,10 +127,11 @@ public class MeasurementsController : ControllerBase
 
         var item = await _db.Measurements
             .Where(m => m.Device_Id == deviceId)
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.Timestamp)
             .FirstOrDefaultAsync();
 
-        if (item == null) return NotFound(new { error = "No measurements yet." });
+        if (item == null)
+            return NotFound(new { error = "No measurements yet." });
 
         return Ok(MeasurementOutDTO.FromEntity(item));
     }

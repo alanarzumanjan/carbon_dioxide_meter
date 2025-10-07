@@ -3,8 +3,9 @@ namespace Dtos;
 public class MeasurementInDTO
 {
     public string DeviceId { get; set; } = default!;
-    public int Co2 { get; set; }
-    public float? Temperature { get; set; }
-    public float? Humidity { get; set; }
+    public double CO2 { get; set; }
+    public double Temperature { get; set; }
+    public double Humidity { get; set; }
     public DateTime? Timestamp { get; set; }
+    public Guid UserId { get; set; }
 }

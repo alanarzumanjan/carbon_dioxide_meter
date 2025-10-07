@@ -4,20 +4,22 @@ namespace Dtos;
 
 public class MeasurementOutDTO
 {
-    public string Id { get; set; } = default!;
+    public Guid Id { get; set; }
     public string? DeviceId { get; set; }
-    public int Co2 { get; set; }
-    public float? Temperature { get; set; }
-    public float? Humidity { get; set; }
-    public DateTime CreatedAt { get; set; }
+    public double CO2 { get; set; }
+    public double Temperature { get; set; }
+    public double Humidity { get; set; }
+    public DateTime Timestamp { get; set; }
+    public Guid UserId { get; set; }
 
     public static MeasurementOutDTO FromEntity(Measurement m) => new()
     {
-        Id = m.Id.ToString(),
+        Id = m.Id,
         DeviceId = m.Device_Id,
-        Co2 = m.Co2,
+        CO2 = m.CO2,
         Temperature = m.Temperature,
         Humidity = m.Humidity,
-        CreatedAt = m.CreatedAt
+        Timestamp = m.Timestamp,
+        UserId = m.User_Id
     };
 }
