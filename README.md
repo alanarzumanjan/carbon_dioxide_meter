@@ -54,7 +54,7 @@ The project is divided into three main parts:
 - **Board downloading:** esp32
 
 ## Database flowchart
-<img src="meter_case_model/images/database_flowchart.png" alt="Database FlowChart" width="300px">
+<img src="meter_case_model/images/database_flowchart.png" alt="Database FlowChart" width="400px">
 
 
 ## To run Frontend
