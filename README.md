@@ -53,6 +53,10 @@ The project is divided into three main parts:
 - **Board:** ESP32-WROOM-DA Module
 - **Board downloading:** esp32
 
+## Database flowchart
+<img src="meter_case_model/images/database_flowchart.png" alt="Database FlowChart" width="300px">
+
+
 ## To run Frontend
 
 ```bash
