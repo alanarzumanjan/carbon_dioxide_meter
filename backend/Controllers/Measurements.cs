@@ -49,7 +49,7 @@ public class MeasurementsController : ControllerBase
             var device = await _db.Devices.FirstOrDefaultAsync(d => d.Id == request.DeviceId);
             if (device == null)
             {
-                device = new Devices
+                device = new Device
                 {
                     Id = request.DeviceId,
                     Name = "Auto-registered device",

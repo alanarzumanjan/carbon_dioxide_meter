@@ -6,42 +6,86 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<User> Users => Set<User>();
-    public DbSet<Devices> Devices => Set<Devices>();
+    public DbSet<Device> Devices => Set<Device>();
     public DbSet<Measurement> Measurements => Set<Measurement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasPostgresExtension("uuid-ossp");
 
-        modelBuilder.Entity<Devices>()
-            .HasKey(d => d.Id);
+        modelBuilder.Entity<User>(u =>
+        {
+            u.HasKey(x => x.Id);
+            u.Property(x => x.Id)
+             .ValueGeneratedOnAdd();
 
-        modelBuilder.Entity<Devices>()
-            .Property(d => d.Id)
-            .HasColumnType("text")
-            .HasDefaultValueSql("uuid_generate_v4()::text");
+            u.HasIndex(x => x.Email).IsUnique();
+            u.HasIndex(x => x.Username).IsUnique();
 
-        modelBuilder.Entity<Measurement>()
-            .Property(m => m.Device_Id)
-            .HasColumnType("text");
+            u.Property(x => x.Username).HasMaxLength(128);
+            u.Property(x => x.Email).HasMaxLength(256);
 
-        modelBuilder.Entity<Measurement>()
-            .HasOne(m => m.Device)
-            .WithMany()
-            .HasForeignKey(m => m.Device_Id)
-            .OnDelete(DeleteBehavior.SetNull);
+            u.HasMany(x => x.Devices)
+             .WithOne(d => d.User)
+             .HasForeignKey(d => d.User_Id)
+             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<User>()
-            .HasMany(u => u.Devices)
-            .WithOne(d => d.User)
-            .HasForeignKey(d => d.User_Id)
-            .OnDelete(DeleteBehavior.Cascade);
+            u.HasMany(x => x.Measurements)
+             .WithOne(m => m.User)
+             .HasForeignKey(m => m.User_Id)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
 
-        modelBuilder.Entity<User>()
-            .HasMany(u => u.Measurements)
-            .WithOne(m => m.User)
-            .HasForeignKey(m => m.User_Id)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Device>(d =>
+        {
+            d.HasKey(x => x.Id_uuid);
+
+            d.Property(x => x.Id_uuid)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("uuid_generate_v4()");
+
+            d.Property(x => x.Id)
+             .IsRequired()
+             .HasMaxLength(17);
+
+            d.HasAlternateKey(x => x.Id)
+             .HasName("AK_Devices_Id");
+
+            d.HasIndex(x => x.Id).IsUnique();
+
+            d.Property(x => x.Name).HasMaxLength(128);
+            d.Property(x => x.Location).HasMaxLength(128);
+            d.Property(x => x.ApiKeyHash).HasMaxLength(200);
+
+            d.Property(x => x.Registered_at)
+             .HasDefaultValueSql("timezone('utc', now())");
+
+            d.Property(x => x.EnrollmentAt);
+            d.Property(x => x.LastSeenAt);
+
+            d.HasMany(x => x.Measurements)
+             .WithOne(m => m.Device)
+             .HasForeignKey(m => m.Device_Id)
+             .HasPrincipalKey(x => x.Id)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Measurement>(m =>
+        {
+            m.HasKey(x => x.Id);
+            m.Property(x => x.Id)
+             .ValueGeneratedOnAdd()
+             .HasDefaultValueSql("uuid_generate_v4()");
+
+            m.Property(x => x.Device_Id)
+             .IsRequired()
+             .HasMaxLength(17);
+
+            m.Property(x => x.Timestamp)
+             .HasDefaultValueSql("timezone('utc', now())");
+
+            m.HasIndex(x => new { x.Device_Id, x.Timestamp });
+            m.HasIndex(x => new { x.User_Id, x.Timestamp });
+        });
     }
-
 }

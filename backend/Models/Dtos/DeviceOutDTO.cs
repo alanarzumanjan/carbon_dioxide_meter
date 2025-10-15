@@ -2,15 +2,15 @@ using Models;
 
 namespace Dtos;
 
-public class DeviceOutDTO
+public sealed class DeviceOutDTO
 {
-    public string Id { get; set; } = default!;
-    public string? Name { get; set; }
-    public string? Location { get; set; }
-    public DateTime Registered_at { get; set; }
-    public Guid User_Id { get; set; }
+    public string Id { get; init; } = default!;
+    public string? Name { get; init; }
+    public string? Location { get; init; }
+    public DateTime Registered_at { get; init; }
+    public Guid User_Id { get; init; }
 
-    public static DeviceOutDTO FromEntity(Devices d) => new()
+    public static DeviceOutDTO FromEntity(Device d) => new()
     {
         Id = d.Id!,
         Name = d.Name,
