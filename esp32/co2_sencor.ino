@@ -14,8 +14,8 @@ void leds_off();
 void wifi_connection();
 
 // WiFi variables
-const char* ssid = "AlanLink";
-const char* password = "2006AlanLink18!";
+const char* ssid = "SSID";
+const char* password = "PASSWORD";
 String server_endpoint = "http://alantech.id/measurement";
 
 // Leds digit variables
