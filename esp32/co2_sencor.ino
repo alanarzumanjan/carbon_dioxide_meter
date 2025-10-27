@@ -17,9 +17,10 @@ void wifi_connection();
 const char* ssid = "AlanLink";
 const char* password = "2006AlanLink18!";
 String server_endpoint = "http://alantech.id/measurement";
+int wifi_pin = 15;
 
 // Leds digit variables
-const int leds[8] = {23, 32, 2, 19, 18, 5, 17, 15};
+const int leds[8] = {23, 32, 2, 19, 18, 5, 17, 16};
 const int co2_levels[8] = {400, 600, 700, 800, 1000, 1200, 1400, 2000};
 const bool led_on = true;
 
@@ -39,6 +40,10 @@ void setup() {
 
   WiFi.begin(ssid, password); // WiFi connection
   wifi_connection(); 
+
+  // check wifi pin work
+  pinMode(wifi_pin, OUTPUT); // указываем, что это выход
+  digitalWrite(wifi_pin, HIGH); // включаем светодиод
 
   // Check SCD41 scanner connection
   Wire.begin(); // SCD41 start, Standart SDA=21, SCL=22 (ESP32-WROOM)
