@@ -33,7 +33,6 @@ public class DevicesController : ControllerBase
     private static bool IsValidMac(string mac) =>
         Regex.IsMatch(mac, "^[0-9A-F]{2}(:[0-9A-F]{2}){5}$");
 
-    // POST /devices/register
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] DeviceRegisterDTO request)
     {
@@ -93,7 +92,6 @@ public class DevicesController : ControllerBase
         }
     }
 
-    // GET /devices/user/{userId}
     [HttpGet("user/{userId:guid}")]
     public async Task<IActionResult> GetByUser(Guid userId)
     {
@@ -118,7 +116,6 @@ public class DevicesController : ControllerBase
         }
     }
 
-    // GET /devices/id/{deviceId}
     [HttpGet("id/{deviceId}")]
     public async Task<IActionResult> GetOne(string deviceId)
     {
