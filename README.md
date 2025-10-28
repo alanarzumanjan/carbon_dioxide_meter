@@ -98,3 +98,25 @@ ALLOWED_FRONTEND_PORT=your_frontend_port
 # PORT
 PORT=your_running_port
 ```
+
+## What is ready?
+🔌 Arduino Layer
+
+- ✅ ESP32 is connected and successfully reads CO₂ data from the MH-Z19B sensor.
+
+- ✅ LED indicators visualize CO₂ level ranges.
+
+- ✅ LED self-test function implemented.
+
+- ⚙️ In progress — sending sensor data to the backend via Wi-Fi (HTTP request).
+
+🖥️ Backend (ASP.NET Core / C#)
+
+- ✅ Implemented Controllers: Devices, Measurements, Contacts, Auth.
+    - Devices: [HttpGet("id/{deviceId}")], [HttpGet("user/{userId:guid}")], [HttpPost("register")]
+    - Auth: [HttpPost("login")], [HttpPost("register")]
+    - Measurements: [HttpGet("measurements/{deviceId}")], [HttpGet("measurements/recent")], 
+                [HttpGet("measurements/{deviceId}/latest")], [HttpPost("measurements")]
+    - Contacts: [HttpPost] SendMessage
+- ✅ Health check endpoint /health (used as initial Cloudflare Tunnel endpoint).
+

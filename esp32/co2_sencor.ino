@@ -42,8 +42,8 @@ void setup() {
   wifi_connection(); 
 
   // check wifi pin work
-  pinMode(wifi_pin, OUTPUT); // указываем, что это выход
-  digitalWrite(wifi_pin, HIGH); // включаем светодиод
+  pinMode(wifi_pin, OUTPUT);
+  digitalWrite(wifi_pin, HIGH);
 
   // Check SCD41 scanner connection
   Wire.begin(); // SCD41 start, Standart SDA=21, SCL=22 (ESP32-WROOM)
