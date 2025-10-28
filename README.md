@@ -117,8 +117,8 @@ PORT=your_running_port
         - `HttpGet("id/{deviceId}")`, 
         - `HttpGet("user/{userId:guid}")`, 
         - `HttpPost("register")`
-    - Auth: 
-        -`HttpPost("login")`, 
+    - Auth:
+        - `HttpPost("login")`, 
         - `HttpPost("register")`
     - Measurements: 
         - `HttpGet("measurements/{deviceId}")`, 
