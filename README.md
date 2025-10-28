@@ -113,10 +113,19 @@ PORT=your_running_port
 🖥️ Backend (ASP.NET Core / C#)
 
 - ✅ Implemented Controllers: Devices, Measurements, Contacts, Auth.
-    - Devices: [HttpGet("id/{deviceId}")], [HttpGet("user/{userId:guid}")], [HttpPost("register")]
-    - Auth: [HttpPost("login")], [HttpPost("register")]
-    - Measurements: [HttpGet("measurements/{deviceId}")], [HttpGet("measurements/recent")], 
-                [HttpGet("measurements/{deviceId}/latest")], [HttpPost("measurements")]
-    - Contacts: [HttpPost] SendMessage
+    - Devices: 
+        - `HttpGet("id/{deviceId}")`, 
+        - `HttpGet("user/{userId:guid}")`, 
+        - `HttpPost("register")`
+    - Auth: 
+        -`HttpPost("login")`, 
+        - `HttpPost("register")`
+    - Measurements: 
+        - `HttpGet("measurements/{deviceId}")`, 
+        - `HttpGet("measurements/recent")`, 
+        - `HttpGet("measurements/{deviceId}/latest")`, 
+        - `HttpPost("measurements")` // register
+    - Contacts: 
+        - `[HttpPost] SendMessage`
 - ✅ Health check endpoint /health (used as initial Cloudflare Tunnel endpoint).
 
