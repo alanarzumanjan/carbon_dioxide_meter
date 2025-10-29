@@ -19,6 +19,11 @@ dist-ssr/
 *.local
 *.env
 
+# Cloudflared
+.cloudflared/*.json
+.cloudflared/*.pem
+.cloudflared/config.yml
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
