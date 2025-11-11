@@ -1,3 +1,7 @@
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -11,7 +15,7 @@ namespace Controllers;
 public class MeasurementsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly string? _intakeKey;
+    private readonly string? _intakeKey; // dev backdoor (INTAKE_API_KEY)
 
     public MeasurementsController(AppDbContext db)
     {
@@ -19,101 +23,145 @@ public class MeasurementsController : ControllerBase
         _intakeKey = Environment.GetEnvironmentVariable("INTAKE_API_KEY");
     }
 
-    private bool IntakeAuthorized(HttpRequest request)
+    private static string NormalizeMac(string mac)
     {
-        if (string.IsNullOrWhiteSpace(_intakeKey)) return true; // dev mode
-        if (!request.Headers.TryGetValue("X-Api-Key", out var key)) return false;
-        return string.Equals(key.ToString(), _intakeKey, StringComparison.Ordinal);
+        if (string.IsNullOrWhiteSpace(mac)) return mac ?? string.Empty;
+        var hex = new string(mac.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        if (hex.Length != 12) return mac.Trim();
+        return string.Join(":", Enumerable.Range(0, 6).Select(i => hex.Substring(i * 2, 2)));
     }
 
-    // POST /measurements
+    private bool IntakeAuthorized(Microsoft.AspNetCore.Http.HttpRequest req)
+    {
+        // Dev backdoor: allow when header matches INTAKE_API_KEY (non-empty)
+        if (!string.IsNullOrWhiteSpace(_intakeKey) &&
+            req.Headers.TryGetValue("X-Api-Key", out var key) &&
+            key.ToString() == _intakeKey)
+        {
+            return true;
+        }
+        return false;
+    }
+
+
     [HttpPost("measurements")]
-    [Consumes("application/json")]
     public async Task<IActionResult> Ingest([FromBody] MeasurementInDTO request)
     {
-        // auth header
-        if (!IntakeAuthorized(Request))
-            return Unauthorized(new { error = "Invalid intake key." });
-
-        // simple validation -> { errors = { field = "msg" } }
+        // Basic field validation
         var errors = new Dictionary<string, string>();
-        if (request is null) return BadRequest(new { error = "Body is required." });
+        if (request == null) return BadRequest(new { error = "Body is required." });
+
         if (string.IsNullOrWhiteSpace(request.DeviceId)) errors["deviceId"] = "DeviceId is required.";
         if (request.UserId == Guid.Empty) errors["userId"] = "UserId is required.";
-        if (request.CO2 <= 0 || request.CO2 > 100000) errors["co2"] = "CO2 value is invalid.";
+        if (request.CO2 <= 0 || request.CO2 > 10_000) errors["co2"] = "CO2 value is invalid.";
         if (errors.Count > 0) return BadRequest(new { errors });
 
         try
         {
-            // ensure device exists (auto-register)
-            var device = await _db.Devices.FirstOrDefaultAsync(d => d.Id == request.DeviceId);
+            // Normalize MAC always
+            var mac = NormalizeMac(request.DeviceId);
+
+            // Ensure Device exists (soft auto-register with safe defaults)
+            var device = await _db.Devices.FirstOrDefaultAsync(d => d.Id == mac);
             if (device == null)
             {
                 device = new Device
                 {
-                    Id = request.DeviceId,
+                    Id = mac,
                     Name = "Auto-registered device",
-                    Location = null,
+                    Location = "Unknown",
                     Registered_at = DateTime.UtcNow,
-                    User_Id = request.UserId
+                    User_Id = request.UserId // временно привязываем к приславшему юзеру
                 };
                 _db.Devices.Add(device);
+                await _db.SaveChangesAsync();
+            }
+
+            // Find user↔device link (device_users)
+            var link = await _db.DeviceUsers
+                .FirstOrDefaultAsync(x => x.Device_Id == mac && x.User_Id == request.UserId);
+
+            if (link == null)
+            {
+                // If dev backdoor is NOT enabled and no link — deny
+                if (!IntakeAuthorized(Request))
+                    return Unauthorized(new { error = "Device is not enrolled for this user." });
+
+                // If backdoor is enabled — create link on the fly without ApiKeyHash
+                link = new DeviceUser
+                {
+                    Device_Id = mac,
+                    User_Id = request.UserId,
+                    ApiKeyHash = null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _db.DeviceUsers.Add(link);
+                await _db.SaveChangesAsync();
+            }
+
+            // Verify device key unless dev backdoor already authorized
+            if (!IntakeAuthorized(Request))
+            {
+                if (!Request.Headers.TryGetValue("X-Api-Key", out var rawKey) || string.IsNullOrWhiteSpace(rawKey))
+                    return Unauthorized(new { error = "X-Api-Key is required." });
+
+                if (string.IsNullOrWhiteSpace(link.ApiKeyHash) || !BCrypt.Net.BCrypt.Verify(rawKey.ToString(), link.ApiKeyHash))
+                    return Unauthorized(new { error = "Invalid device key." });
             }
 
             var ts = (request.Timestamp ?? DateTime.UtcNow).ToUniversalTime();
 
-            var m = new Measurement
+            var entity = new Measurement
             {
                 Id = Guid.NewGuid(),
-                Device_Id = request.DeviceId,
+                Device_Id = mac,
                 User_Id = request.UserId,
+                Device_Users_Id = link.Id,
                 CO2 = request.CO2,
                 Temperature = request.Temperature,
                 Humidity = request.Humidity,
                 Timestamp = ts
             };
 
-            using var tx = await _db.Database.BeginTransactionAsync();
-            _db.Measurements.Add(m);
+            _db.Measurements.Add(entity);
             await _db.SaveChangesAsync();
-            await tx.CommitAsync();
 
-            var message = $"> Measurement stored: device={m.Device_Id}, co2={m.CO2}, ts={m.Timestamp:o}";
+            var message = $"> Measurement ingested: device={mac}, link={link.Id}, co2={request.CO2}, ts={ts:o}";
             Console.WriteLine(message);
-            return Ok(new { message, data = MeasurementOutDTO.FromEntity(m) });
+
+            return Ok(new { message, data = MeasurementOutDTO.FromEntity(entity) });
+        }
+        catch (DbUpdateException dbex)
+        {
+            Console.WriteLine($"❌ DB error on ingest: {dbex.Message}");
+            return StatusCode(500, new { error = "Database error while saving measurement." });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to store measurement: {ex.Message}");
-            return StatusCode(500, "Failed to store measurement.");
+            Console.WriteLine($"❌ Failed to ingest measurement: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to ingest measurement." });
         }
     }
 
-    // GET /measurements/{deviceId}
     [HttpGet("measurements/{deviceId}")]
     public async Task<IActionResult> GetByDevice(string deviceId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
     {
-        if (string.IsNullOrWhiteSpace(deviceId))
-            return BadRequest(new { errors = new { deviceId = "DeviceId is required." } });
-
         try
         {
             limit = Math.Clamp(limit, 1, 1000);
             offset = Math.Max(0, offset);
+            var mac = NormalizeMac(deviceId);
 
             var query = _db.Measurements
-                .Where(m => m.Device_Id == deviceId)
+                .AsNoTracking()
+                .Where(m => m.Device_Id == mac)
                 .OrderByDescending(m => m.Timestamp);
 
             var total = await query.CountAsync();
             var items = await query.Skip(offset).Take(limit).ToListAsync();
 
-            var message = $"> Measurements fetched: device={deviceId}, count={items.Count}, total={total}";
-            Console.WriteLine(message);
-
             return Ok(new
             {
-                message,
                 total,
                 limit,
                 offset,
@@ -122,59 +170,92 @@ public class MeasurementsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to get measurements: {ex.Message}");
-            return StatusCode(500, "Failed to get measurements.");
+            Console.WriteLine($"❌ Failed to fetch by device: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to fetch measurements." });
         }
     }
 
-    // GET /measurements/recent
-    [HttpGet("measurements/recent")]
-    public async Task<IActionResult> GetRecent([FromQuery] int limit = 100)
+    [HttpGet("measurements/by-link/{deviceUsersId:guid}")]
+    public async Task<IActionResult> GetByLink(Guid deviceUsersId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
     {
+        if (deviceUsersId == Guid.Empty)
+            return BadRequest(new { errors = new { deviceUsersId = "Required" } });
+
         try
         {
             limit = Math.Clamp(limit, 1, 1000);
+            offset = Math.Max(0, offset);
 
-            var items = await _db.Measurements
-                .OrderByDescending(m => m.Timestamp)
-                .Take(limit)
-                .ToListAsync();
+            var query = _db.Measurements
+                .AsNoTracking()
+                .Where(m => m.Device_Users_Id == deviceUsersId)
+                .OrderByDescending(m => m.Timestamp);
 
-            var message = $"> Recent measurements fetched: count={items.Count}";
-            Console.WriteLine(message);
+            var total = await query.CountAsync();
+            var items = await query.Skip(offset).Take(limit).ToListAsync();
 
             return Ok(new
             {
-                message,
-                count = items.Count,
+                total,
+                limit,
+                offset,
                 data = items.Select(MeasurementOutDTO.FromEntity)
             });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to get recent measurements: {ex.Message}");
-            return StatusCode(500, "Failed to get recent measurements.");
+            Console.WriteLine($"❌ Failed to fetch by link: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to fetch measurements." });
         }
     }
 
-    // GET /measurements/{deviceId}/latest
-    [HttpGet("measurements/{deviceId}/latest")]
-    public async Task<IActionResult> GetLatest(string deviceId)
+    [HttpGet("measurements/recent")]
+    public async Task<IActionResult> GetRecent([FromQuery] int limit = 50, [FromQuery] int offset = 0)
     {
-        if (string.IsNullOrWhiteSpace(deviceId))
-            return BadRequest(new { errors = new { deviceId = "DeviceId is required." } });
-
         try
         {
+            limit = Math.Clamp(limit, 1, 1000);
+            offset = Math.Max(0, offset);
+
+            var query = _db.Measurements
+                .AsNoTracking()
+                .OrderByDescending(m => m.Timestamp);
+
+            var total = await query.CountAsync();
+            var items = await query.Skip(offset).Take(limit).ToListAsync();
+
+            return Ok(new
+            {
+                total,
+                limit,
+                offset,
+                data = items.Select(MeasurementOutDTO.FromEntity)
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to fetch recent: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to fetch measurements." });
+        }
+    }
+
+    [HttpGet("measurements/{deviceId}/latest")]
+    public async Task<IActionResult> GetLatestByDevice(string deviceId)
+    {
+        try
+        {
+            var mac = NormalizeMac(deviceId);
+
             var item = await _db.Measurements
-                .Where(m => m.Device_Id == deviceId)
+                .AsNoTracking()
+                .Where(m => m.Device_Id == mac)
                 .OrderByDescending(m => m.Timestamp)
                 .FirstOrDefaultAsync();
 
-            if (item is null)
+            if (item == null)
                 return NotFound(new { error = "No measurements yet." });
 
-            var message = $"> Latest measurement fetched: device={deviceId}, co2={item.CO2}, ts={item.Timestamp:o}";
+            var message = $"> Latest measurement fetched: device={mac}, co2={item.CO2}, ts={item.Timestamp:o}";
             Console.WriteLine(message);
 
             return Ok(new { message, data = MeasurementOutDTO.FromEntity(item) });
@@ -182,7 +263,7 @@ public class MeasurementsController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Failed to get latest measurement: {ex.Message}");
-            return StatusCode(500, "Failed to get latest measurement.");
+            return StatusCode(500, new { error = "Failed to get latest measurement." });
         }
     }
 }
