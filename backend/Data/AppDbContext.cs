@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<Measurement> Measurements => Set<Measurement>();
+    public DbSet<DeviceUser> DeviceUsers => Set<DeviceUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,5 +88,36 @@ public class AppDbContext : DbContext
             m.HasIndex(x => new { x.Device_Id, x.Timestamp });
             m.HasIndex(x => new { x.User_Id, x.Timestamp });
         });
+
+        modelBuilder.Entity<DeviceUser>(du =>
+        {
+            du.HasKey(x => x.Id);
+            du.Property(x => x.Id).ValueGeneratedOnAdd().HasDefaultValueSql("uuid_generate_v4()");
+            du.Property(x => x.Device_Id).IsRequired().HasMaxLength(17);
+            du.Property(x => x.ApiKeyHash).HasMaxLength(200);
+            du.HasIndex(x => new { x.Device_Id, x.User_Id }).IsUnique();
+
+            du.HasOne(x => x.Device)
+            .WithMany()
+            .HasPrincipalKey(d => d.Id)
+            .HasForeignKey(x => x.Device_Id)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            du.HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.User_Id)
+            .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Measurement>(m =>
+        {
+            m.HasOne(x => x.DeviceUser)
+            .WithMany()
+            .HasForeignKey(x => x.Device_Users_Id)
+            .OnDelete(DeleteBehavior.Cascade);
+
+            m.HasIndex(x => new { x.Device_Users_Id, x.Timestamp });
+        });
+
     }
 }

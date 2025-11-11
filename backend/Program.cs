@@ -36,22 +36,13 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Connect Swagger UI in Development
-if (app.Environment.IsDevelopment())
-{
-    app.UseMiddleware<SwaggerAuth>();
-    app.UseSwagger();
-    app.UseSwaggerUI();
-} // for swagger acces: $env:ASPNETCORE_ENVIRONMENT = "Development"
+app.UseMiddleware<SwaggerAuth>();
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // CORS
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-}
-else
-{
-    app.UseCors("FrontendOnly");
-}
+app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+app.UseCors("FrontendOnly");
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.UseStaticFiles();

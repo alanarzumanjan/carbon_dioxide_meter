@@ -76,4 +76,25 @@ public class Measurement
     public Guid User_Id { get; set; }
 
     public User? User { get; set; }
+    public Guid Device_Users_Id { get; set; }
+    public DeviceUser? DeviceUser { get; set; }
+}
+
+public class DeviceUser
+{
+    [Key] public Guid Id { get; set; } = Guid.NewGuid();
+
+    [Required, MaxLength(17)]
+    public string? Device_Id { get; set; }
+
+    [Required]
+    public Guid User_Id { get; set; }
+
+    [MaxLength(200)]
+    public string? ApiKeyHash { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Device? Device { get; set; }
+    public User? User { get; set; }
 }
