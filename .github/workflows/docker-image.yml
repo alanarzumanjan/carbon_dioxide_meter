@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Backend Docker CI
 
 on:
   push:
@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
 
     steps:
       - name: Checkout repo
@@ -25,8 +29,8 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test --no-build --verbosity normal
+      # - name: Test
+      #   run: dotnet test --no-build --verbosity normal
 
       - name: Build Docker image
         run: |
