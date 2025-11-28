@@ -1,0 +1,107 @@
+import { type FormEvent, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { apiRegister } from "../api/client";
+import type { RegisterDTO, User, ApiResponse } from "../types/api";
+
+export function RegisterPage() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState<RegisterDTO>({
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const res = (await apiRegister(form)) as ApiResponse<User>;
+    setLoading(false);
+
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
+
+    if (res.data) {
+      localStorage.setItem("user", JSON.stringify(res.data));
+      navigate("/app");
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 px-4">
+      <div className="w-full max-w-md bg-slate-900/80 border border-slate-800 rounded-2xl p-8 shadow-xl">
+        <h1 className="text-2xl font-semibold mb-2 text-center">Create account</h1>
+        <p className="text-sm text-slate-400 mb-6 text-center">
+          Register and connect your ESP32 CO₂ monitor.
+        </p>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {error && (
+            <div className="text-sm text-red-400 bg-red-950/40 border border-red-800 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-sm text-slate-200">Username</label>
+            <input
+              type="text"
+              required
+              value={form.username}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, username: e.target.value }))
+              }
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm text-slate-200">Email</label>
+            <input
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, email: e.target.value }))
+              }
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm text-slate-200">Password</label>
+            <input
+              type="password"
+              required
+              value={form.password}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, password: e.target.value }))
+              }
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 px-3 py-2 text-sm font-medium"
+          >
+            {loading ? "Creating..." : "Create account"}
+          </button>
+        </form>
+
+        <p className="mt-4 text-xs text-slate-400 text-center">
+          Already have an account?{" "}
+          <Link to="/login" className="text-indigo-400 hover:text-indigo-300">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
