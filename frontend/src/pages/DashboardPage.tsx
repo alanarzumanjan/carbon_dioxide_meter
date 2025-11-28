@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGetUserDevices, apiGetDeviceMeasurements } from "../api/client";
