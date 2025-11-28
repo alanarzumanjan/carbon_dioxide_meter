@@ -3,15 +3,17 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-}
-
-html,
-body,
-#root {
-  height: 100%;
+  color-scheme: light dark;
 }
 
 body {
-  background: #0b0d10;
+  @apply antialiased;
+}
+
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
