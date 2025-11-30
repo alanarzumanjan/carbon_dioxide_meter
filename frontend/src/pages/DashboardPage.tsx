@@ -31,7 +31,7 @@ export function DashboardPage() {
     }
 
     load();
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     async function loadMeasurements() {
