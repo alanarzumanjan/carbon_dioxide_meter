@@ -54,7 +54,7 @@ The project is divided into three main parts:
 - **Board downloading:** esp32
 
 ## Entity-Relationship Diagram
-<img src="images/database_flowchart.png" alt="Database FlowChart" width="400px">
+<img src="images/entity-relationship-diagram.png" alt="Database FlowChart" width="400px">
 
 
 ## To run Frontend
