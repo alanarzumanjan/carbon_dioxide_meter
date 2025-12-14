@@ -35,6 +35,39 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Apply database migrations automatically on startup if needed
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        
+        // Check if there are pending migrations
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+        
+        if (pendingMigrations.Any())
+        {
+            Console.WriteLine($"📦 Found {pendingMigrations.Count()} pending migration(s). Applying...");
+            foreach (var migration in pendingMigrations)
+            {
+                Console.WriteLine($"   - {migration}");
+            }
+            
+            await dbContext.Database.MigrateAsync();
+            Console.WriteLine("✅ Database migrations applied successfully");
+        }
+        else
+        {
+            Console.WriteLine("✅ Database is up to date. No migrations needed.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Migration failed: {ex.Message}");
+        throw;
+    }
+}
+
 // Connect Swagger UI in Development
 app.UseMiddleware<SwaggerAuth>();
 app.UseSwagger();

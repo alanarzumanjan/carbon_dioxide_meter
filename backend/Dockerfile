@@ -3,12 +3,13 @@ WORKDIR /src
 
 COPY *.csproj ./
 
-RUN dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org || true && \
-    dotnet restore --disable-parallel --no-cache || \
-    (sleep 10 && dotnet restore --disable-parallel --no-cache) || \
-    (sleep 20 && dotnet restore --disable-parallel --no-cache)
-
 COPY . .
+
+# Create initial migration if it doesn't exist
+RUN dotnet tool install --global dotnet-ef || true
+ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN dotnet ef migrations add InitialCreate --no-build || true
+
 RUN dotnet publish -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
