@@ -51,7 +51,7 @@ jobs:
           # .env  docker-compose.yml
           cat > .env << EOF
           DATABASE=co2
-          USER=postgres
+          USER=alan
           PASSWORD=${{ secrets.DB_PASSWORD || 'postgres_test_password' }}
           PORT=5000
           ALLOWED_FRONTEND_PORT=http://localhost:3000
