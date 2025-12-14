@@ -20,7 +20,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      network: host
+      # network: host
     container_name: co2_backend
     env_file:
       - ./backend/.env
