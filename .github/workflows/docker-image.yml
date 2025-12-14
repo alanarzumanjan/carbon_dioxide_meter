@@ -42,7 +42,7 @@ jobs:
           docker run --rm ${{ env.IMAGE_NAME }}:latest dotnet --version
           echo "✅ Docker image built successfully!"
 
-      - name: Test container startup
+      - name: Test container startup with health check
         run: |
           docker run -d --name test-backend \
             -e POSTGRES_CONNECTION_STRING="Host=localhost;Port=5432;Database=test;Username=test;Password=test" \
@@ -51,19 +51,21 @@ jobs:
             -p 5000:5000 \
             ${{ env.IMAGE_NAME }}:latest
           
-          sleep 5
-          
-          if docker ps | grep test-backend; then
-            echo "✅ Container is running"
+          echo "Waiting for container to be ready..."
+          timeout 30 bash -c 'until curl -f http://localhost:5000/health 2>/dev/null; do sleep 2; done' || {
+            echo "❌ Container failed to respond"
             docker logs test-backend
-          else
-            echo "❌ Container failed to start"
-            docker logs test-backend
+            docker stop test-backend
+            docker rm test-backend
             exit 1
-          fi
+          }
+          
+          echo "✅ Container is healthy!"
+          docker logs test-backend | tail -20
           
           docker stop test-backend
           docker rm test-backend
+          echo "✅ Test completed!"
 
   # Job 2: Docker Compose
   docker-compose-test:
