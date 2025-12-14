@@ -7,35 +7,50 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./backend
-
+    
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Restore
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
-
-      # - name: Test
-      #   run: dotnet test --no-build --verbosity normal
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: |
+            carbon-backend:latest
+            carbon-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker image
         run: |
-          IMAGE_NAME=carbon-backend
-          docker build . \
-            -f Dockerfile \
-            -t $IMAGE_NAME:latest \
-            -t $IMAGE_NAME:${{ github.sha }}
+          docker run --rm carbon-backend:latest dotnet --version
+          echo "✅ Docker image built successfully!"
+
+      - name: Run container health check
+        run: |
+          docker run -d --name test-backend \
+            -e POSTGRES_CONNECTION_STRING="Host=localhost;Port=5432;Database=test;Username=test;Password=test" \
+            -p 5000:5000 \
+            carbon-backend:latest
+          
+          sleep 5
+          
+          # Проверяем, что контейнер запустился
+          if docker ps | grep test-backend; then
+            echo "✅ Container is running"
+          else
+            echo "❌ Container failed to start"
+            docker logs test-backend
+            exit 1
+          fi
+          
+          docker stop test-backend
+          docker rm test-backend

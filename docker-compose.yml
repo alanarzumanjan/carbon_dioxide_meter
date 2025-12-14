@@ -3,39 +3,37 @@ services:
     image: postgres:16
     container_name: co2_postgres
     environment:
-      POSTGRES_DB: ${DATABASE:-co2}
-      POSTGRES_USER: ${USER:-postgres}
-      POSTGRES_PASSWORD: ${PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE}
+      POSTGRES_USER: ${USER}
+      POSTGRES_PASSWORD: ${PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${USER:-postgres} -d ${DATABASE:-co2}"]
+      test: ["CMD-SHELL", "pg_isready -U ${USER} -d ${DATABASE}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
+      network: host
     container_name: co2_backend
-
     env_file:
       - ./backend/.env
     environment:
-      POSTGRES_CONNECTION_STRING: >-
-        Host=postgres;Port=5432;Database=${DATABASE};Username=${USER};Password=${PASSWORD};
-        Include Error Detail=true;
+      POSTGRES_CONNECTION_STRING: "Host=postgres;Port=5432;Database=${DATABASE};Username=${USER};Password=${PASSWORD};Include Error Detail=true;"
       ASPNETCORE_ENVIRONMENT: Development
-      PORT: "5000"
-      ALLOWED_FRONTEND_PORT: ${ALLOWED_FRONTEND_PORT:-http://localhost:3000}
+      PORT: ${PORT}
+      ALLOWED_FRONTEND_PORT: ${ALLOWED_FRONTEND_PORT}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "5000:5000"
+      - "${PORT}:${PORT}"
     restart: unless-stopped
 
 volumes:
