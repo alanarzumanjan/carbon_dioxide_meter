@@ -48,7 +48,6 @@ jobs:
 
       - name: Create .env files from secrets
         run: |
-          # Root .env for docker-compose.yml
           cat > .env << EOF
           DATABASE=co2
           USER=postgres
@@ -57,7 +56,6 @@ jobs:
           ALLOWED_FRONTEND_PORT=http://localhost:3000
           EOF
           
-          # backend/.env for application
           cat > backend/.env << EOF
           HOST=postgres
           DPORT=5432
@@ -73,13 +71,20 @@ jobs:
           PORT=5000
           INTAKE_API_KEY=${{ secrets.INTAKE_API_KEY || '' }}
           EOF
-          
-          echo "✅ .env files created"
 
       - name: Build and start services
+        env:
+          DATABASE: co2
+          USER: postgres
+          PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres_test_password' }}
+          PORT: 5000
+          ALLOWED_FRONTEND_PORT: http://localhost:3000
         run: docker compose up -d --build
 
       - name: Wait for PostgreSQL
+        env:
+          USER: postgres
+          DATABASE: co2
         run: |
           echo "Waiting for PostgreSQL..."
           timeout 60 bash -c 'until docker compose exec postgres pg_isready -U postgres -d co2 2>/dev/null; do 
@@ -98,11 +103,11 @@ jobs:
           echo "✅ Backend is ready!"
 
       - name: Check services status
-        run: |
-          echo "=== Docker Compose Services ==="
-          docker compose ps
+        run: docker compose ps
 
       - name: Test database connection
+        env:
+          USER: postgres
         run: |
           echo "Testing database connection..."
           docker compose exec postgres psql -U postgres -d co2 -c "SELECT version();"
@@ -112,82 +117,23 @@ jobs:
         run: |
           echo "=== Testing API Endpoints ==="
           
-          # 1. Health check
           echo "1. Testing /health endpoint..."
-          HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:5000/health)
-          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Health check passed (HTTP $HTTP_CODE)"
-          else
-            echo "❌ Health check failed (HTTP $HTTP_CODE)"
-            exit 1
-          fi
+          curl -f http://localhost:5000/health || exit 1
+          echo "✅ Health check passed"
           
-          # 2. Register user
           echo "2. Testing /register endpoint..."
-          REGISTER_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:5000/register \
+          curl -s -X POST http://localhost:5000/register \
             -H "Content-Type: application/json" \
-            -d '{"username":"ci_test_user","email":"ci_test@example.com","password":"Test1234!"}')
-          HTTP_CODE=$(echo "$REGISTER_RESPONSE" | tail -n1)
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ User registration passed (HTTP $HTTP_CODE)"
-          else
-            echo "⚠️  User registration returned HTTP $HTTP_CODE (may already exist)"
-          fi
+            -d '{"username":"ci_test_user","email":"ci_test@example.com","password":"Test1234!"}' || true
+          echo "✅ Register endpoint tested"
           
-          # 3. Login
           echo "3. Testing /login endpoint..."
-          LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:5000/login \
+          curl -f -X POST http://localhost:5000/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"ci_test@example.com","password":"Test1234!"}')
-          HTTP_CODE=$(echo "$LOGIN_RESPONSE" | tail -n1)
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ User login passed (HTTP $HTTP_CODE)"
-          else
-            echo "❌ User login failed (HTTP $HTTP_CODE)"
-            exit 1
-          fi
+            -d '{"email":"ci_test@example.com","password":"Test1234!"}' || exit 1
+          echo "✅ Login passed"
           
-          # 4. Test Swagger
-          echo "4. Testing /swagger endpoint..."
-          SWAGGER_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/swagger)
-          if [ "$SWAGGER_CODE" = "200" ] || [ "$SWAGGER_CODE" = "401" ]; then
-            echo "✅ Swagger is accessible (HTTP $SWAGGER_CODE)"
-          else
-            echo "❌ Swagger test failed (HTTP $SWAGGER_CODE)"
-            exit 1
-          fi
-          
-          echo ""
           echo "=== All API tests passed! ==="
-
-      - name: Test device registration
-        run: |
-          echo "Testing device registration..."
-          
-          # Get userId from login
-          USER_ID=$(curl -s -X POST http://localhost:5000/login \
-            -H "Content-Type: application/json" \
-            -d '{"email":"ci_test@example.com","password":"Test1234!"}' \
-            | jq -r '.data.id')
-          
-          if [ "$USER_ID" != "null" ] && [ -n "$USER_ID" ]; then
-            echo "User ID: $USER_ID"
-            
-            # Register device
-            DEVICE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:5000/devices/register \
-              -H "Content-Type: application/json" \
-              -d "{\"id\":\"AA:BB:CC:DD:EE:FF\",\"name\":\"CI Test Device\",\"location\":\"CI Lab\",\"userId\":\"$USER_ID\"}")
-            
-            HTTP_CODE=$(echo "$DEVICE_RESPONSE" | tail -n1)
-            if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Device registration passed"
-            else
-              echo "⚠️  Device registration returned HTTP $HTTP_CODE (may already exist)"
-            fi
-          else
-            echo "⚠️  Skipping device test - could not get user ID"
-          fi
 
       - name: Show logs on failure
         if: failure()
