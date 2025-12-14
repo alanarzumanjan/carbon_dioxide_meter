@@ -42,7 +42,7 @@ jobs:
           docker run --rm ${{ env.IMAGE_NAME }}:latest dotnet --version
           echo "✅ Docker image built successfully!"
 
-  # Job 2: Docker Compose
+  # Job 2: Test with Docker Compose
   docker-compose-test:
     name: Test with Docker Compose
     runs-on: ubuntu-latest
@@ -52,22 +52,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create production .env files
+      - name: Create .env files from secrets
         run: |
-          cat > .env << 'EOF'
+          # .env  docker-compose.yml
+          cat > .env << EOF
           DATABASE=co2
           USER=postgres
-          PASSWORD=${{ secrets.DB_PASSWORD || 'postgres_prod_password' }}
+          PASSWORD=${{ secrets.DB_PASSWORD || 'postgres_test_password' }}
           PORT=5000
           ALLOWED_FRONTEND_PORT=http://localhost:3000
           EOF
           
-          cat > backend/.env << 'EOF'
+          # backend/.env 
+          cat > backend/.env << EOF
           HOST=postgres
           DPORT=5432
           DATABASE=co2
           USER=postgres
-          PASSWORD=${{ secrets.DB_PASSWORD || 'postgres_prod_password' }}
+          PASSWORD=${{ secrets.DB_PASSWORD || 'postgres_test_password' }}
           EMAIL_ADDRESS=${{ secrets.EMAIL_ADDRESS || 'noreply@example.com' }}
           EMAIL_PASSWORD=${{ secrets.EMAIL_PASSWORD || 'dummy_password' }}
           EMAIL_NAME=${{ secrets.EMAIL_NAME || 'CO2 Monitor' }}
@@ -77,52 +79,161 @@ jobs:
           PORT=5000
           INTAKE_API_KEY=${{ secrets.INTAKE_API_KEY || '' }}
           EOF
+          
+          echo "✅ .env files created from secrets"
+
+      - name: Validate docker-compose.yml
+        run: docker compose config
 
       - name: Build and start services
         run: docker compose up -d --build
 
       - name: Wait for PostgreSQL
         run: |
-          echo "Waiting for PostgreSQL..."
-          timeout 60 bash -c 'until docker compose exec postgres pg_isready -U postgres -d co2 2>/dev/null; do sleep 2; done'
+          echo "Waiting for PostgreSQL to be ready..."
+          timeout 60 bash -c 'until docker compose exec postgres pg_isready -U postgres -d co2 2>/dev/null; do 
+            echo "Waiting for postgres..."
+            sleep 2
+          done'
           echo "✅ PostgreSQL is ready!"
 
       - name: Wait for Backend
         run: |
-          echo "Waiting for backend..."
-          timeout 60 bash -c 'until curl -f http://localhost:5000/health 2>/dev/null; do sleep 2; done'
+          echo "Waiting for backend to be ready..."
+          timeout 60 bash -c 'until curl -f http://localhost:5000/health 2>/dev/null; do 
+            echo "Waiting for backend..."
+            sleep 2
+          done'
           echo "✅ Backend is ready!"
+
+      - name: Check services status
+        run: |
+          echo "=== Docker Compose Services Status ==="
+          docker compose ps
+          echo ""
+          echo "=== Docker Containers ==="
+          docker ps
+
+      - name: Test database connection
+        run: |
+          echo "Testing database connection..."
+          docker compose exec postgres psql -U postgres -d co2 -c "SELECT version();"
+          echo "✅ Database connection successful!"
 
       - name: Test API endpoints
         run: |
-          echo "=== Testing API ==="
+          echo "=== Testing API Endpoints ==="
           
-          # Health
-          curl -f http://localhost:5000/health || exit 1
-          echo "✅ Health check passed"
+          # 1. Health check
+          echo "1. Testing /health endpoint..."
+          HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" http://localhost:5000/health)
+          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Health check passed (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Health check failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
           
-          # Register
-          curl -X POST http://localhost:5000/register \
+          # 2. Register user
+          echo "2. Testing /register endpoint..."
+          REGISTER_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:5000/register \
             -H "Content-Type: application/json" \
-            -d '{"username":"testuser","email":"test@example.com","password":"Test1234!"}' || true
+            -d '{"username":"ci_test_user","email":"ci_test@example.com","password":"Test1234!"}')
+          HTTP_CODE=$(echo "$REGISTER_RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ User registration passed (HTTP $HTTP_CODE)"
+            echo "$REGISTER_RESPONSE" | head -n-1 | jq '.' || true
+          else
+            echo "⚠️  User registration returned HTTP $HTTP_CODE (may already exist)"
+            echo "$REGISTER_RESPONSE" | head -n-1
+          fi
           
-          # Login
-          curl -f -X POST http://localhost:5000/login \
+          # 3. Login
+          echo "3. Testing /login endpoint..."
+          LOGIN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:5000/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"test@example.com","password":"Test1234!"}' || exit 1
-          echo "✅ Login passed"
+            -d '{"email":"ci_test@example.com","password":"Test1234!"}')
+          HTTP_CODE=$(echo "$LOGIN_RESPONSE" | tail -n1)
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ User login passed (HTTP $HTTP_CODE)"
+            echo "$LOGIN_RESPONSE" | head -n-1 | jq '.' || true
+          else
+            echo "❌ User login failed (HTTP $HTTP_CODE)"
+            echo "$LOGIN_RESPONSE" | head -n-1
+            exit 1
+          fi
           
-          echo "=== All tests passed! ==="
+          # 4. Swagger
+          echo "4. Testing /swagger endpoint..."
+          SWAGGER_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/swagger)
+          if [ "$SWAGGER_CODE" = "200" ] || [ "$SWAGGER_CODE" = "401" ]; then
+            echo "✅ Swagger is accessible (HTTP $SWAGGER_CODE)"
+          else
+            echo "❌ Swagger test failed (HTTP $SWAGGER_CODE)"
+            exit 1
+          fi
+          
+          echo ""
+          echo "=== All API tests passed! ==="
 
-      - name: Show logs on failure
+      - name: Test device registration
+        run: |
+          echo "Testing device registration..."
+          
+          # userId
+          USER_ID=$(curl -s -X POST http://localhost:5000/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci_test@example.com","password":"Test1234!"}' \
+            | jq -r '.data.id')
+          
+          if [ "$USER_ID" != "null" ] && [ -n "$USER_ID" ]; then
+            echo "User ID: $USER_ID"
+            
+            # Register device
+            DEVICE_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST http://localhost:5000/devices/register \
+              -H "Content-Type: application/json" \
+              -d "{\"id\":\"AA:BB:CC:DD:EE:FF\",\"name\":\"CI Test Device\",\"location\":\"CI Lab\",\"userId\":\"$USER_ID\"}")
+            
+            HTTP_CODE=$(echo "$DEVICE_RESPONSE" | tail -n1)
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Device registration passed"
+              echo "$DEVICE_RESPONSE" | head -n-1 | jq '.' || true
+            else
+              echo "⚠️  Device registration returned HTTP $HTTP_CODE (may already exist)"
+            fi
+          else
+            echo "⚠️  Skipping device test - could not get user ID"
+          fi
+
+      - name: Check application logs
+        if: always()
+        run: |
+          echo "=== Backend Logs ==="
+          docker compose logs backend | tail -50
+          echo ""
+          echo "=== PostgreSQL Logs ==="
+          docker compose logs postgres | tail -30
+
+      - name: Export logs as artifact
         if: failure()
         run: |
-          docker compose logs backend
-          docker compose logs postgres
+          mkdir -p logs
+          docker compose logs backend > logs/backend.log
+          docker compose logs postgres > logs/postgres.log
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-compose-logs
+          path: logs/
 
       - name: Cleanup
         if: always()
-        run: docker compose down -v
+        run: |
+          docker compose down -v
+          docker system prune -f
 
   # Job 3: Security scan
   security-scan:
@@ -193,3 +304,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Image digest
+        run: echo "Image pushed with digest ${{ steps.meta.outputs.digest }}"
