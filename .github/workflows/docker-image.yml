@@ -39,7 +39,7 @@ jobs:
       - name: Test Docker image
         run: |
           echo "Testing Docker image..."
-          docker run --rm ${{ env.IMAGE_NAME }}:latest dotnet --version
+          docker run --rm --entrypoint dotnet ${{ env.IMAGE_NAME }}:latest --version
           echo "✅ Docker image built successfully!"
 
   # Job 2: Test with Docker Compose
