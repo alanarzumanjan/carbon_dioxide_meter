@@ -29,6 +29,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       PORT: ${PORT}
       ALLOWED_FRONTEND_PORT: ${ALLOWED_FRONTEND_PORT}
+      EMAIL_ADDRESS: ${EMAIL_ADDRESS}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL_NAME: ${EMAIL_NAME}
     depends_on:
       postgres:
         condition: service_healthy

@@ -21,7 +21,16 @@ public class ContactsController : ControllerBase
 
             var emailEnv = Environment.GetEnvironmentVariable("EMAIL_ADDRESS");
             var passwordEnv = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
-            var nameEnv = Environment.GetEnvironmentVariable("EMAIL_NAME");
+            var nameEnv = Environment.GetEnvironmentVariable("EMAIL_NAME") ?? "Iot meter Support Team";
+
+            Console.WriteLine($"📧 Contact form received from {form.Email}: {form.Message}");
+
+            // Check if email is configured
+            if (string.IsNullOrEmpty(emailEnv) || string.IsNullOrEmpty(passwordEnv))
+            {
+                Console.WriteLine($"⚠️  Email not configured. Message saved to logs.");
+                return Ok(new { message = "Message received successfully!" });
+            }
 
             var emailMessage = new MimeMessage();
             emailMessage.From.Add(new MailboxAddress(form.Name, form.Email));
@@ -33,19 +42,28 @@ public class ContactsController : ControllerBase
             };
 
             using var client = new SmtpClient();
-            await client.ConnectAsync("smtp.gmail.com", 587, false);
-            await client.AuthenticateAsync(emailEnv, passwordEnv);
-            await client.SendAsync(emailMessage);
-            await client.DisconnectAsync(true);
+            client.Timeout = 5000; // 5 seconds
 
-            var message = $"Message '{form.Message}' sended with email [{form.Email}]";
-            Console.WriteLine(message);
-            return Ok(new { message });
+            try
+            {
+                await client.ConnectAsync("smtp.gmail.com", 465, true);
+                await client.AuthenticateAsync(emailEnv, passwordEnv);
+                await client.SendAsync(emailMessage);
+                await client.DisconnectAsync(true);
+
+                Console.WriteLine($"✅ Email notification sent to {emailEnv}");
+                return Ok(new { message = "Message received and email sent!" });
+            }
+            catch (Exception smtpEx)
+            {
+                Console.WriteLine($"⚠️  Email send failed: {smtpEx.Message}. Message logged.");
+                return Ok(new { message = "Message received successfully!" });
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Failed to sending email: {ex.Message}");
-            return StatusCode(500, "Failed to sending email.");
+            Console.WriteLine($"❌ Contact form error: {ex.Message}");
+            return StatusCode(500, "Failed to process contact form.");
         }
     }
 }
