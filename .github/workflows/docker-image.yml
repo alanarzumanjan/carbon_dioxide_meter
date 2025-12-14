@@ -48,16 +48,16 @@ jobs:
 
       - name: Create .env files from secrets
         run: |
-          # .env  docker-compose.yml
+          # Root .env for docker-compose.yml
           cat > .env << EOF
           DATABASE=co2
-          USER=alan
+          USER=postgres
           PASSWORD=${{ secrets.DB_PASSWORD || 'postgres_test_password' }}
           PORT=5000
           ALLOWED_FRONTEND_PORT=http://localhost:3000
           EOF
           
-          # backend/.env 
+          # backend/.env for application
           cat > backend/.env << EOF
           HOST=postgres
           DPORT=5432
@@ -74,17 +74,14 @@ jobs:
           INTAKE_API_KEY=${{ secrets.INTAKE_API_KEY || '' }}
           EOF
           
-          echo "✅ .env files created from secrets"
-
-      - name: Validate docker-compose.yml
-        run: docker compose config
+          echo "✅ .env files created"
 
       - name: Build and start services
         run: docker compose up -d --build
 
       - name: Wait for PostgreSQL
         run: |
-          echo "Waiting for PostgreSQL to be ready..."
+          echo "Waiting for PostgreSQL..."
           timeout 60 bash -c 'until docker compose exec postgres pg_isready -U postgres -d co2 2>/dev/null; do 
             echo "Waiting for postgres..."
             sleep 2
@@ -93,7 +90,7 @@ jobs:
 
       - name: Wait for Backend
         run: |
-          echo "Waiting for backend to be ready..."
+          echo "Waiting for backend..."
           timeout 60 bash -c 'until curl -f http://localhost:5000/health 2>/dev/null; do 
             echo "Waiting for backend..."
             sleep 2
@@ -102,11 +99,8 @@ jobs:
 
       - name: Check services status
         run: |
-          echo "=== Docker Compose Services Status ==="
+          echo "=== Docker Compose Services ==="
           docker compose ps
-          echo ""
-          echo "=== Docker Containers ==="
-          docker ps
 
       - name: Test database connection
         run: |
@@ -137,10 +131,8 @@ jobs:
           HTTP_CODE=$(echo "$REGISTER_RESPONSE" | tail -n1)
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ User registration passed (HTTP $HTTP_CODE)"
-            echo "$REGISTER_RESPONSE" | head -n-1 | jq '.' || true
           else
             echo "⚠️  User registration returned HTTP $HTTP_CODE (may already exist)"
-            echo "$REGISTER_RESPONSE" | head -n-1
           fi
           
           # 3. Login
@@ -151,14 +143,12 @@ jobs:
           HTTP_CODE=$(echo "$LOGIN_RESPONSE" | tail -n1)
           if [ "$HTTP_CODE" = "200" ]; then
             echo "✅ User login passed (HTTP $HTTP_CODE)"
-            echo "$LOGIN_RESPONSE" | head -n-1 | jq '.' || true
           else
             echo "❌ User login failed (HTTP $HTTP_CODE)"
-            echo "$LOGIN_RESPONSE" | head -n-1
             exit 1
           fi
           
-          # 4. Swagger
+          # 4. Test Swagger
           echo "4. Testing /swagger endpoint..."
           SWAGGER_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/swagger)
           if [ "$SWAGGER_CODE" = "200" ] || [ "$SWAGGER_CODE" = "401" ]; then
@@ -175,7 +165,7 @@ jobs:
         run: |
           echo "Testing device registration..."
           
-          # userId
+          # Get userId from login
           USER_ID=$(curl -s -X POST http://localhost:5000/login \
             -H "Content-Type: application/json" \
             -d '{"email":"ci_test@example.com","password":"Test1234!"}' \
@@ -192,7 +182,6 @@ jobs:
             HTTP_CODE=$(echo "$DEVICE_RESPONSE" | tail -n1)
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Device registration passed"
-              echo "$DEVICE_RESPONSE" | head -n-1 | jq '.' || true
             else
               echo "⚠️  Device registration returned HTTP $HTTP_CODE (may already exist)"
             fi
@@ -200,8 +189,8 @@ jobs:
             echo "⚠️  Skipping device test - could not get user ID"
           fi
 
-      - name: Check application logs
-        if: always()
+      - name: Show logs on failure
+        if: failure()
         run: |
           echo "=== Backend Logs ==="
           docker compose logs backend | tail -50
@@ -209,25 +198,9 @@ jobs:
           echo "=== PostgreSQL Logs ==="
           docker compose logs postgres | tail -30
 
-      - name: Export logs as artifact
-        if: failure()
-        run: |
-          mkdir -p logs
-          docker compose logs backend > logs/backend.log
-          docker compose logs postgres > logs/postgres.log
-
-      - name: Upload logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-compose-logs
-          path: logs/
-
       - name: Cleanup
         if: always()
-        run: |
-          docker compose down -v
-          docker system prune -f
+        run: docker compose down -v
 
   # Job 3: Security scan
   security-scan:
