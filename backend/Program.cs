@@ -22,7 +22,7 @@ builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 
 // CORS
-var frontendOrigin = Environment.GetEnvironmentVariable("ALLOWED_FRONTEND_PORT") ?? "https://localhost:3000";
+var frontendOrigin = Environment.GetEnvironmentVariable("ALLOWED_FRONTEND_PORT") ?? "http://localhost:5173";
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendOnly", policy =>

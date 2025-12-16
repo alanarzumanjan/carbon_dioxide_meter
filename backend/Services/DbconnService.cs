@@ -21,7 +21,7 @@ public class DbConnectionService
         var host = Environment.GetEnvironmentVariable("HOST") ?? "localhost";
         var port = Environment.GetEnvironmentVariable("DPORT") ?? "5432";
         var database = Environment.GetEnvironmentVariable("DATABASE") ?? "postgres";
-        var user = Environment.GetEnvironmentVariable("USER") ?? "postgres";
+        var user = Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "postgres";
         var password = Environment.GetEnvironmentVariable("PASSWORD") ?? "postgres";
 
         var direct = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING");
