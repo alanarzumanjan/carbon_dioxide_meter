@@ -10,6 +10,9 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ContactsPage } from "./pages/ContactsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AppLayout } from "./components/layout/AppLayout";
+import { Header } from "./components/layout/Header";
+import { Footer } from "./components/layout/Footer";
+import { ThemeProvider } from "./components/layout/ThemeContext";
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const raw = localStorage.getItem("user");
@@ -22,35 +25,61 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   return children;
 }
 
+function PublicLayout({ children }: { children: JSX.Element }) {
+  return (
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+      <Header />
+      <main className="flex-1">
+        {children}
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function AppLayoutWrapper() {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+      <Header />
+      <div className="flex-1 flex">
+        <AppLayout />
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
 export function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/contacts" element={<ContactsPage />} />
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public pages with Header/Footer */}
+          <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
+          <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
+          <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
+          <Route path="/contacts" element={<PublicLayout><ContactsPage /></PublicLayout>} />
 
-        {/* Authenticated */}
-        <Route
-          path="/app"
-          element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardPage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="devices/connect" element={<DeviceConnectPage />} />
-          <Route path="devices/:deviceId" element={<DeviceDetailPage />} />
-          <Route path="profile" element={<ProfilePage />} />
-        </Route>
+          {/* Authenticated pages with Header/Footer + Sidebar */}
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <AppLayoutWrapper />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="devices/connect" element={<DeviceConnectPage />} />
+            <Route path="devices/:deviceId" element={<DeviceDetailPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </BrowserRouter>
+          {/* 404 */}
+          <Route path="*" element={<PublicLayout><NotFoundPage /></PublicLayout>} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

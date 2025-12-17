@@ -52,53 +52,53 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Overview of your devices and recent air quality.
           </p>
         </div>
         <Link
           to="/app/devices/connect"
-          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-medium"
+          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-medium text-white transition-colors"
         >
           + Connect device
         </Link>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Loading...</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Loading...</p>
       ) : (
         <>
           {/* Summary cards */}
           <div className="grid sm:grid-cols-3 gap-4">
-            <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
-              <p className="text-xs text-slate-400 mb-1">Devices</p>
-              <p className="text-2xl font-semibold">{devices.length}</p>
+            <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Devices</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{devices.length}</p>
             </div>
 
-            <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
-              <p className="text-xs text-slate-400 mb-1">Last CO₂</p>
-              <p className="text-2xl font-semibold">
+            <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Last CO₂</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                 {latest ? `${latest.co2.toFixed(0)} ppm` : "—"}
               </p>
             </div>
 
-            <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
-              <p className="text-xs text-slate-400 mb-1">Last temp</p>
-              <p className="text-2xl font-semibold">
+            <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Last temp</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                 {latest ? `${latest.temperature.toFixed(1)} °C` : "—"}
               </p>
             </div>
           </div>
 
           {/* Device list */}
-          <div className="mt-4 rounded-xl bg-slate-900 border border-slate-800">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-              <p className="text-sm font-medium">My devices</p>
+          <div className="mt-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">My devices</p>
             </div>
-            <div className="divide-y divide-slate-800 text-sm">
+            <div className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
               {devices.length === 0 && (
-                <p className="px-4 py-3 text-slate-400">
+                <p className="px-4 py-3 text-slate-600 dark:text-slate-400">
                   You don&apos;t have any devices yet.
                 </p>
               )}
@@ -107,17 +107,17 @@ export function DashboardPage() {
                 <Link
                   key={d.id}
                   to={`/app/devices/${encodeURIComponent(d.id)}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-slate-800/80"
+                  className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
                 >
                   <div>
-                    <p className="font-medium">
+                    <p className="font-medium text-slate-900 dark:text-white">
                       {d.name || d.id}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
                       {d.location || "Unknown location"}
                     </p>
                   </div>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-500 dark:text-slate-500">
                     MAC: {d.id}
                   </span>
                 </Link>
