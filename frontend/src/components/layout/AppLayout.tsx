@@ -28,7 +28,7 @@ export function AppLayout() {
             Dashboard
           </NavLink>
           <NavLink
-            to="/app/devices/connect"
+            to="documentation"
             className={({ isActive }) =>
               `block rounded-lg px-3 py-2 ${
                 isActive
@@ -37,7 +37,7 @@ export function AppLayout() {
               }`
             }
           >
-            Connect device
+            Documentation
           </NavLink>
           <NavLink
             to="/app/profile"
@@ -51,6 +51,19 @@ export function AppLayout() {
           >
             Profile & API
           </NavLink>
+          <NavLink
+            to="/app/history"
+            className={({ isActive }) =>
+              `block rounded-lg px-3 py-2 ${
+                isActive
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+              }`
+            }
+          >
+            History
+          </NavLink>
+
         </nav>
       </aside>
 

@@ -35,7 +35,7 @@ export function Footer() {
             </p>
             <div className="flex space-x-4 mt-4">
               <a
-                href="https://github.com/yourusername/co2-monitor"
+                href="https://github.com/alanarzumanjan/carbon_dioxide_meter"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-slate-400 hover:text-white transition-colors"
@@ -50,7 +50,7 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href="https://twitter.com/yourusername"
+                href="https://twitter.com/co2_monitor"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-slate-400 hover:text-white transition-colors"
@@ -77,16 +77,16 @@ export function Footer() {
                   Dashboard
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <a href="#features" className="hover:text-white transition-colors">
                   Features
                 </a>
-              </li>
-              <li>
+              </li> */}
+              {/* <li>
                 <a href="#pricing" className="hover:text-white transition-colors">
                   Pricing
                 </a>
-              </li>
+              </li> */}
             </ul>
           </div>
 
@@ -96,7 +96,7 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li>
                 <a
-                  href="https://docs.example.com"
+                  href="https://alantech.id.lv/app/documentation"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition-colors"

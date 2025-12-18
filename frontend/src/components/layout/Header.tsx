@@ -7,7 +7,6 @@ export function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Проверяем авторизацию при монтировании и при изменениях
     const checkAuth = () => {
       const user = localStorage.getItem("user");
       setIsAuthenticated(!!user);
@@ -15,7 +14,6 @@ export function Header() {
 
     checkAuth();
 
-    // Слушаем изменения localStorage (для синхронизации между вкладками)
     window.addEventListener("storage", checkAuth);
     
     return () => window.removeEventListener("storage", checkAuth);
@@ -77,8 +75,14 @@ export function Header() {
             >
               Contact
             </Link>
+            <Link
+              to="app/documentation"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors"
+            >
+              Documentation
+            </Link>
             <a
-              href="https://github.com/yourusername/co2-monitor"
+              href="https://github.com/alanarzumanjan/carbon_dioxide_meter"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors"

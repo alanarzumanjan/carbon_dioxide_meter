@@ -81,3 +81,12 @@ export type ApiResponse<T> = ApiErrorResponse | ApiOkResponse<T>;
 export const isError = <T,>(
   r: ApiResponse<T>
 ): r is ApiErrorResponse => "error" in r;
+export interface MeasurementsResponse {
+  total?: number;
+  limit?: number;
+  offset?: number;
+  from?: string;
+  to?: string;
+  data?: Measurement[];
+  error?: string;
+}

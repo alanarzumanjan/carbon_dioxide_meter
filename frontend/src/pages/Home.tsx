@@ -218,6 +218,110 @@ export function Home() {
           </div>
         </div>
       </section>
+      {/* Hardware Components */}
+      <section className="border-t border-slate-200 dark:border-slate-800 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900/40">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
+              Hardware Components
+            </h2>
+            <p className="mt-3 text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              The core parts inside AirSense used to measure indoor air quality reliably — from sensor to indicators.
+            </p>
+          </div>
+
+          {/* centered grid */}
+          <div className="flex justify-center">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 w-full max-w-6xl">
+              {[
+                {
+                  title: "ESP32 Board",
+                  text: "The brain of the device — connects to Wi-Fi and sends data to the cloud.",
+                  accent: "from-indigo-500/20 to-purple-500/10",
+                  img: "/assets/co2-meter.png",
+                },
+                {
+                  title: "CO₂ Sensor (SCD4x)",
+                  text: "Measures CO₂ concentration using NDIR technology (plus temperature & humidity).",
+                  accent: "from-emerald-500/20 to-teal-500/10",
+                  img: "/assets/sencor.png",
+                },
+                {
+                  title: "LED Indicators",
+                  text: "Visual alert levels (green/orange/red) for instant air quality feedback.",
+                  accent: "from-amber-500/20 to-red-500/10",
+                  img: "/assets/diodi.png",
+                },
+              ].map((c) => (
+                <div
+                  key={c.title}
+                  className="group rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-sm backdrop-blur
+                             transition-all hover:-translate-y-0.5 hover:shadow-lg
+                             dark:border-slate-800 dark:bg-slate-950/50"
+                >
+                  {/* BIG image placeholder */}
+                  <div
+                    className={[
+                      "rounded-2xl border border-slate-200/60 dark:border-slate-800/60",
+                      "bg-gradient-to-br",
+                      c.accent,
+                      "p-3",
+                    ].join(" ")}
+                  >
+                    <div className="relative rounded-xl bg-white/70 dark:bg-slate-950/60 border border-slate-200/60 dark:border-slate-800/60 overflow-hidden">
+                      <div className="h-44 sm:h-48 w-full flex items-center justify-center">
+                        {c.img ? (
+                          <img
+                            src={c.img}
+                            alt={c.title}
+                            className="h-full w-full object-contain p-4"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="text-center px-6">
+                            <div className="mx-auto mb-2 h-10 w-10 rounded-xl border border-slate-200/60 dark:border-slate-800/60 bg-white/70 dark:bg-slate-950/60 flex items-center justify-center">
+                              <svg
+                                className="h-5 w-5 text-slate-700 dark:text-slate-200"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                              >
+                                <path d="M4 7h16M6 7v10m12-10v10M8 17h8" />
+                              </svg>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Image placeholder
+                            </p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-500 mt-1">
+                              Put your <code>img</code> path here
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <p className="font-semibold text-slate-900 dark:text-white">
+                      {c.title}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                      {c.text}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent dark:via-slate-800" />
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-500">
+                    Essential for stable measurements.
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
     </>
   );
 }

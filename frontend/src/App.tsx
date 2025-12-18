@@ -4,7 +4,7 @@ import { Home } from "./pages/Home";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { DeviceConnectPage } from "./pages/DeviceConnectPage";
+import { DocumentationPage } from "./pages/DocumentationPage";
 import { DeviceDetailPage } from "./pages/DeviceDetailPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ContactsPage } from "./pages/ContactsPage";
@@ -13,6 +13,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { Header } from "./components/layout/Header";
 import { Footer } from "./components/layout/Footer";
 import { ThemeProvider } from "./components/layout/ThemeContext";
+import { HistoryPage } from "./pages/HistoryPage";
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const raw = localStorage.getItem("user");
@@ -71,9 +72,11 @@ export function App() {
           >
             <Route index element={<DashboardPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="devices/connect" element={<DeviceConnectPage />} />
+            <Route path="documentation" element={<DocumentationPage />} />
             <Route path="devices/:deviceId" element={<DeviceDetailPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="history" element={<HistoryPage />} />
+
           </Route>
 
           {/* 404 */}

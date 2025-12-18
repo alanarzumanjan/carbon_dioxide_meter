@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Dtos;
+using System.Text.RegularExpressions;
 
 namespace Controllers;
 
@@ -15,13 +16,8 @@ namespace Controllers;
 public class MeasurementsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private readonly string? _intakeKey; // dev backdoor (INTAKE_API_KEY)
 
-    public MeasurementsController(AppDbContext db)
-    {
-        _db = db;
-        _intakeKey = Environment.GetEnvironmentVariable("INTAKE_API_KEY");
-    }
+    public MeasurementsController(AppDbContext db) => _db = db;
 
     private static string NormalizeMac(string mac)
     {
@@ -31,91 +27,75 @@ public class MeasurementsController : ControllerBase
         return string.Join(":", Enumerable.Range(0, 6).Select(i => hex.Substring(i * 2, 2)));
     }
 
-    private bool IntakeAuthorized(Microsoft.AspNetCore.Http.HttpRequest req)
-    {
-        // Dev backdoor: allow when header matches INTAKE_API_KEY (non-empty)
-        if (!string.IsNullOrWhiteSpace(_intakeKey) &&
-            req.Headers.TryGetValue("X-Api-Key", out var key) &&
-            key.ToString() == _intakeKey)
-        {
-            return true;
-        }
-        return false;
-    }
-
+    private static bool IsValidMac(string mac) =>
+        Regex.IsMatch(mac, "^[0-9A-F]{2}(:[0-9A-F]{2}){5}$");
 
     [HttpPost("measurements")]
     public async Task<IActionResult> Ingest([FromBody] MeasurementInDTO request)
     {
-        // Basic field validation
-        var errors = new Dictionary<string, string>();
-        if (request == null) return BadRequest(new { error = "Body is required." });
+        if (request == null)
+            return BadRequest(new { error = "Body is required." });
 
-        if (string.IsNullOrWhiteSpace(request.DeviceId)) errors["deviceId"] = "DeviceId is required.";
-        if (request.UserId == Guid.Empty) errors["userId"] = "UserId is required.";
+        // validate body
+        var errors = new Dictionary<string, string>();
+        if (string.IsNullOrWhiteSpace(request.DeviceId)) errors["deviceId"] = "DeviceId (MAC) is required.";
         if (request.CO2 <= 0 || request.CO2 > 10_000) errors["co2"] = "CO2 value is invalid.";
         if (errors.Count > 0) return BadRequest(new { errors });
 
+        // validate header key
+        if (!Request.Headers.TryGetValue("X-Api-Key", out var rawKey) || string.IsNullOrWhiteSpace(rawKey))
+            return Unauthorized(new { error = "X-Api-Key is required." });
+
+        var mac = NormalizeMac(request.DeviceId!);
+        if (!IsValidMac(mac))
+            return BadRequest(new { error = "Invalid MAC format. Use AA:BB:CC:DD:EE:FF." });
+
         try
         {
-            // Normalize MAC always
-            var mac = NormalizeMac(request.DeviceId);
+            // 1) Find link for this device (we don't trust UserId from body)
+            var link = await _db.DeviceUsers.FirstOrDefaultAsync(x => x.Device_Id == mac);
+            if (link == null)
+                return Unauthorized(new { error = "Device is not enrolled (no device-user link)." });
 
-            // Ensure Device exists (soft auto-register with safe defaults)
+            if (string.IsNullOrWhiteSpace(link.ApiKeyHash) ||
+                !BCrypt.Net.BCrypt.Verify(rawKey.ToString(), link.ApiKeyHash))
+                return Unauthorized(new { error = "Invalid device key." });
+
+            var userId = link.User_Id;
+
+            // 2) Ensure device exists (optional safety)
             var device = await _db.Devices.FirstOrDefaultAsync(d => d.Id == mac);
             if (device == null)
             {
+                // Create device bound to the user from link
                 device = new Device
                 {
                     Id = mac,
                     Name = "Auto-registered device",
                     Location = "Unknown",
                     Registered_at = DateTime.UtcNow,
-                    User_Id = request.UserId // временно привязываем к приславшему юзеру
+                    User_Id = userId,
+                    LastSeenAt = DateTime.UtcNow
                 };
                 _db.Devices.Add(device);
-                await _db.SaveChangesAsync();
             }
-
-            // Find user↔device link (device_users)
-            var link = await _db.DeviceUsers
-                .FirstOrDefaultAsync(x => x.Device_Id == mac && x.User_Id == request.UserId);
-
-            if (link == null)
+            else
             {
-                // If dev backdoor is NOT enabled and no link — deny
-                if (!IntakeAuthorized(Request))
-                    return Unauthorized(new { error = "Device is not enrolled for this user." });
+                // extra safety: ensure ownership matches the link
+                if (device.User_Id != userId)
+                    return StatusCode(403, new { error = "Device ownership mismatch." });
 
-                // If backdoor is enabled — create link on the fly without ApiKeyHash
-                link = new DeviceUser
-                {
-                    Device_Id = mac,
-                    User_Id = request.UserId,
-                    ApiKeyHash = null,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _db.DeviceUsers.Add(link);
-                await _db.SaveChangesAsync();
+                device.LastSeenAt = DateTime.UtcNow;
             }
 
-            // Verify device key unless dev backdoor already authorized
-            if (!IntakeAuthorized(Request))
-            {
-                if (!Request.Headers.TryGetValue("X-Api-Key", out var rawKey) || string.IsNullOrWhiteSpace(rawKey))
-                    return Unauthorized(new { error = "X-Api-Key is required." });
-
-                if (string.IsNullOrWhiteSpace(link.ApiKeyHash) || !BCrypt.Net.BCrypt.Verify(rawKey.ToString(), link.ApiKeyHash))
-                    return Unauthorized(new { error = "Invalid device key." });
-            }
-
+            // 3) Save measurement
             var ts = (request.Timestamp ?? DateTime.UtcNow).ToUniversalTime();
 
             var entity = new Measurement
             {
                 Id = Guid.NewGuid(),
                 Device_Id = mac,
-                User_Id = request.UserId,
+                User_Id = userId,
                 Device_Users_Id = link.Id,
                 CO2 = request.CO2,
                 Temperature = request.Temperature,
@@ -126,7 +106,7 @@ public class MeasurementsController : ControllerBase
             _db.Measurements.Add(entity);
             await _db.SaveChangesAsync();
 
-            var message = $"> Measurement ingested: device={mac}, link={link.Id}, co2={request.CO2}, ts={ts:o}";
+            var message = $"> Measurement saved: device={mac}, userId={userId}, link={link.Id}, co2={request.CO2}, ts={ts:o}";
             Console.WriteLine(message);
 
             return Ok(new { message, data = MeasurementOutDTO.FromEntity(entity) });
@@ -144,36 +124,62 @@ public class MeasurementsController : ControllerBase
     }
 
     [HttpGet("measurements/{deviceId}")]
-    public async Task<IActionResult> GetByDevice(string deviceId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
+public async Task<IActionResult> GetByDevice(
+    string deviceId,
+    [FromQuery] DateTime? from = null,
+    [FromQuery] DateTime? to = null,
+    [FromQuery] int limit = 0,          // 0 = "no limit" (but capped)
+    [FromQuery] int offset = 0)
+{
+    try
     {
-        try
+        offset = Math.Max(0, offset);
+
+        // safety cap: "no limit" is still capped
+        const int HARD_CAP = 1000000;
+        if (limit <= 0) limit = HARD_CAP;
+        limit = Math.Clamp(limit, 1, HARD_CAP);
+
+        var mac = NormalizeMac(deviceId);
+
+        var query = _db.Measurements
+            .AsNoTracking()
+            .Where(m => m.Device_Id == mac);
+
+        if (from.HasValue)
         {
-            limit = Math.Clamp(limit, 1, 1000);
-            offset = Math.Max(0, offset);
-            var mac = NormalizeMac(deviceId);
-
-            var query = _db.Measurements
-                .AsNoTracking()
-                .Where(m => m.Device_Id == mac)
-                .OrderByDescending(m => m.Timestamp);
-
-            var total = await query.CountAsync();
-            var items = await query.Skip(offset).Take(limit).ToListAsync();
-
-            return Ok(new
-            {
-                total,
-                limit,
-                offset,
-                data = items.Select(MeasurementOutDTO.FromEntity)
-            });
+            var f = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+            query = query.Where(m => m.Timestamp >= f);
         }
-        catch (Exception ex)
+
+        if (to.HasValue)
         {
-            Console.WriteLine($"❌ Failed to fetch by device: {ex.Message}");
-            return StatusCode(500, new { error = "Failed to fetch measurements." });
+            var t = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+            query = query.Where(m => m.Timestamp <= t);
         }
+
+        query = query.OrderByDescending(m => m.Timestamp);
+
+        var total = await query.CountAsync();
+        var items = await query.Skip(offset).Take(limit).ToListAsync();
+
+        return Ok(new
+        {
+            total,
+            limit,
+            offset,
+            from,
+            to,
+            data = items.Select(MeasurementOutDTO.FromEntity)
+        });
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Failed to fetch by device: {ex.Message}");
+        return StatusCode(500, new { error = "Failed to fetch measurements." });
+    }
+}
+
 
     [HttpGet("measurements/by-link/{deviceUsersId:guid}")]
     public async Task<IActionResult> GetByLink(Guid deviceUsersId, [FromQuery] int limit = 50, [FromQuery] int offset = 0)
@@ -255,10 +261,7 @@ public class MeasurementsController : ControllerBase
             if (item == null)
                 return NotFound(new { error = "No measurements yet." });
 
-            var message = $"> Latest measurement fetched: device={mac}, co2={item.CO2}, ts={item.Timestamp:o}";
-            Console.WriteLine(message);
-
-            return Ok(new { message, data = MeasurementOutDTO.FromEntity(item) });
+            return Ok(new { data = MeasurementOutDTO.FromEntity(item) });
         }
         catch (Exception ex)
         {

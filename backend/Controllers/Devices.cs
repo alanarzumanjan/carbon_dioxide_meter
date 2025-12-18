@@ -142,4 +142,44 @@ public class DevicesController : ControllerBase
             return StatusCode(500, new { error = "Failed to fetch device." });
         }
     }
+
+   [HttpPut("{id}")]
+public async Task<IActionResult> Update(string id, [FromBody] UpdateDeviceDto? dto)
+{
+    if (string.IsNullOrWhiteSpace(id))
+        return BadRequest(new { error = "DeviceId is required." });
+
+    var mac = NormalizeMac(id);
+    if (!IsValidMac(mac))
+        return BadRequest(new { error = "Invalid MAC format. Use AA:BB:CC:DD:EE:FF." });
+
+    if (dto is null)
+        return BadRequest(new { error = "Body is required." });
+
+    var device = await _db.Devices.FindAsync(mac);
+    if (device is null)
+        return NotFound(new { error = "Device not found." });
+
+    if (dto.Name != null) device.Name = dto.Name.Trim();
+    if (dto.Location != null) device.Location = dto.Location.Trim();
+
+    try
+    {
+        await _db.SaveChangesAsync();
+        return Ok(new { message = "Device updated.", data = DeviceOutDTO.FromEntity(device) });
+    }
+    catch (DbUpdateException ex)
+    {
+        Console.WriteLine($"❌ Update failed (DB): {ex.InnerException?.Message ?? ex.Message}");
+        // если у тебя unique constraints — тут будет самый частый улёт
+        return Conflict(new { error = "Update failed: duplicate name/location (unique constraint)." });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Update failed: {ex.Message}");
+        return StatusCode(500, new { error = "Failed to update device." });
+    }
+}
+
+
 }
