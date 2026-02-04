@@ -6,7 +6,6 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-
 SCD4x scd;
 WebServer server(80);
 Preferences prefs;
@@ -20,7 +19,7 @@ IPAddress apGW(192, 168, 4, 1);
 IPAddress apSN(255, 255, 255, 0);
 
 // !!! your backend URL
-const char* API_URL = "https://api.alantech.id.lv";
+const char* API_URL = "https://oxide-level.id.lv";
 
 // send interval
 const unsigned long SEND_INTERVAL = 60000; // 60s
