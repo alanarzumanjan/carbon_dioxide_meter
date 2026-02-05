@@ -92,7 +92,7 @@ EMAIL_PASSWORD=your_email_password
 SWAGGER_ADMIN_LOGIN=login_name
 SWAGGER_ADMIN_PASSWORD=super_strong_password
 
-# CORS (фронт)
+# CORS (frontend)
 ALLOWED_FRONTEND_PORT=your_frontend_port
 
 # PORT
