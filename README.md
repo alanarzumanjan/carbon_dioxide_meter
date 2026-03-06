@@ -1,6 +1,6 @@
 # Arduino Carbon Dioxide Meter
 
-📟 **Arduino Carbon Dioxide Meter** is a DIY project for measuring indoor CO₂ levels using an Arduino microcontroller and a gas sensor (e.g., MH-Z19, CCS811, or similar).
+**Arduino Carbon Dioxide Meter** is a DIY project for measuring indoor CO₂ levels using an Arduino microcontroller and a gas sensor SDC41.
 The project helps monitor air quality, reminding you to ventilate the room and maintain a healthy CO₂ concentration.
 
 ## Features
@@ -28,13 +28,13 @@ The project is divided into three main parts:
 - Reads CO₂ data from the sensor.
 - Sends data via Serial/USB or Wi-Fi (ESP module) to the server.
 
-### 🖥️ Backend (C# / ASP.NET Core)
+### Backend (C# / ASP.NET Core)
 
 - Receives sensor data from Arduino.
 - Stores CO₂ values in a database.
 - Provides REST API for the frontend.
 
-### 🌐 Frontend (React)
+### Frontend (React)
 
 - Displays real-time CO₂ levels.
 - Graphs for monitoring changes over time.
